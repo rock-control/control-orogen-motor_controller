@@ -1,11 +1,11 @@
 name "motor_controller"
 version "0.1"
 
-# import_types_from "motor_controllerTypes.hpp"
 
 import_types_from "base"
 
 using_library 'motor_controller'
+import_types_from "motor_controllerTypes.hpp"
 import_types_from "motor_controller/PID.hpp"
 
 task_context "PIDTask" do
@@ -13,11 +13,8 @@ task_context "PIDTask" do
     # transition to a setup where all components use a configuration step.
     needs_configuration
 
-    # The configuration for the 
-    property "settings", "std/vector<motor_controller/PIDSettings>"
-
-    # The domain of the generated output
-    property "output_domain", "base/actuators/DRIVE_MODE"
+    # The configuration for each of the actuator controllers
+    property "settings", "std/vector<motor_controller/ActuatorSettings>"
 
     # The feedback from the actuators
     #
@@ -29,13 +26,18 @@ task_context "PIDTask" do
     #
     # It is expected to contain as many actuator information as there are
     # elements in the settings property
-    input_port "targets", "base/actuators/Command"
+    input_port "in_command", "base/actuators/Command"
 
     # The command.
     #
     # It will contain as many commands as there are elements in the settings
     # property (and therefore in 'targets' and 'status_samples')
-    output_port "command", "base/actuators/Command"
+    output_port "out_command", "base/actuators/Command"
+
+    # The internal state of the PID controllers
+    output_port 'pid_states', 'std/vector<motor_controller/PIDState>'
+
+    exception_states :UNINITIALIZED_INPUT_MODE
 
     port_driven :status_samples
 end

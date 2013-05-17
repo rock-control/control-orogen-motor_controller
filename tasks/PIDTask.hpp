@@ -6,6 +6,14 @@
 #include "motor_controller/PIDTaskBase.hpp"
 
 namespace motor_controller {
+    struct DumbVelocityFilter
+    {
+        double mLastValue;
+        base::Time mLastTime;
+
+        void reset();
+        double update(base::Time time, double v);
+    };
 
     /*! \class PIDTask 
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
@@ -25,8 +33,35 @@ namespace motor_controller {
     {
 	friend class PIDTaskBase;
     protected:
+        std::vector<motor_controller::PID> mPIDs;
+        base::actuators::Status mStatus;
+        base::actuators::Command mInputCommand;
+        base::actuators::Command mOutputCommand;
+        std::vector<motor_controller::PIDState> mPIDState;
+        std::vector<DumbVelocityFilter> mVelocityFilters;
 
+        /** Computes the speed from the position
+         *
+         * @param idx the index of the actuator we want to estimate the speed of
+         * @param time the current time (i.e. the time at which actuator 'idx'
+         *   was in position 'position'
+         * @param position the current position of the actuator
+         */
+        virtual double computeSpeedCommand(int idx, base::Time time, double position);
 
+        /** Computes an output command
+         *
+         * The default implementation simply calls the PID controller for the
+         * requested actuator
+         *
+         * @param idx the index of the actuator we want to compute the command of
+         * @param output_domain the requested output domain
+         * @param state the current state of the actuator
+         * @param target the requested target for this actuator (output_domain
+         *   describes how this value should be interpreted)
+         * @param now the current time
+         */
+        virtual double computePIDOutput(int idx, base::actuators::DRIVE_MODE output_domain, double state, double target, base::Time now);
 
     public:
         /** TaskContext constructor for PIDTask
