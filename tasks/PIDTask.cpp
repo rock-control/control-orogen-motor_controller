@@ -83,10 +83,14 @@ void PIDTask::updateHook()
 
     if (_in_command.read(mInputCommand) == RTT::NoData)
         return;
+    if (mInputCommand.target.size() != mPIDs.size() || mInputCommand.mode.size() != mPIDs.size())
+        return exception(WRONG_INPUT_SIZE);
 
     // Do something only when we have a new status sample
     if (_status_samples.read(mStatus) != RTT::NewData)
         return;
+    if (mStatus.states.size() != mPIDs.size())
+        return exception(WRONG_INPUT_SIZE);
 
     for (size_t i = 0; i < mStatus.states.size(); ++i)
     {

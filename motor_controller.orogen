@@ -38,6 +38,7 @@ task_context "PIDTask" do
     output_port 'pid_states', 'std/vector<motor_controller/PIDState>'
 
     exception_states :UNINITIALIZED_INPUT_MODE
+    exception_states :WRONG_INPUT_SIZE
 
     port_driven :status_samples
 end
