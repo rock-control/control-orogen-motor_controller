@@ -62,5 +62,48 @@ describe 'the PID task' do
         sleep 0.1
         assert_state_equals :WRONG_INPUT_SIZE, task
     end
+
+    describe "application of the PID controller" do
+        attr_reader :status, :settings, :command, :command_r
+        before do
+            @settings = Types::MotorController::ActuatorSettings.new
+            settings.zero!
+            settings.pid.K = 1
+            @status  = status_w.new_sample
+            status.zero!
+            status.states << Types::Base::Actuators::MotorState.new
+            status.states[0].zero!
+            @command = command_w.new_sample
+            command.mode << :DM_UNINITIALIZED
+            command.target << 0
+            @command_r = task.out_command.reader
+        end
+
+        def do_test_input_field_selection(mode, position, positionExtern, pwm)
+            task.settings = [settings]
+            task.configure
+            task.start
+            command.mode[0] = mode
+            command_w.write command
+            status.states[0].position = position
+            status.states[0].positionExtern = positionExtern
+            status.states[0].pwm = pwm
+            status_w.write status
+            output = read_one_sample(command_r)
+            assert_equal(0, output.target[0])
+        end
+
+        it "should use the PWM field when in PWM mode" do
+            do_test_input_field_selection(:DM_PWM, 1, 1, 0)
+        end
+        it "should use the position field when in internal position mode" do
+            settings.use_external = false
+            do_test_input_field_selection(:DM_POSITION, 0, 1, 1)
+        end
+        it "should use the position field when in external position mode" do
+            settings.use_external = true
+            do_test_input_field_selection(:DM_POSITION, 1, 0, 1)
+        end
+    end
 end
 
