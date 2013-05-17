@@ -1,0 +1,42 @@
+name "motor_controller"
+version "0.1"
+
+# import_types_from "motor_controllerTypes.hpp"
+
+import_types_from "base"
+
+using_library 'motor_controller'
+import_types_from "motor_controller/PID.hpp"
+
+task_context "PIDTask" do
+    # This is the default from now on, and should not be removed. Rock will
+    # transition to a setup where all components use a configuration step.
+    needs_configuration
+
+    # The configuration for the 
+    property "settings", "std/vector<motor_controller/PIDSettings>"
+
+    # The domain of the generated output
+    property "output_domain", "base/actuators/DRIVE_MODE"
+
+    # The feedback from the actuators
+    #
+    # It is expected to contain as many actuator information as there are
+    # elements in the settings property
+    input_port "status_samples", "/base/actuators/Status"
+
+    # The command.
+    #
+    # It is expected to contain as many actuator information as there are
+    # elements in the settings property
+    input_port "targets", "base/actuators/Command"
+
+    # The command.
+    #
+    # It will contain as many commands as there are elements in the settings
+    # property (and therefore in 'targets' and 'status_samples')
+    output_port "command", "base/actuators/Command"
+
+    port_driven :status_samples
+end
+
