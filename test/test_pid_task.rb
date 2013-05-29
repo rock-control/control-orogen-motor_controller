@@ -36,12 +36,11 @@ describe 'the PID task' do
         status.zero!
         command = command_w.new_sample
         command.zero!
-        command.mode << :DM_PWM
-        command.target << 0
+        command.states << Types::Base::JointState.new
         command_w.write(command)
         status_w.write(status)
         sleep 0.1
-        assert_state_equals :WRONG_INPUT_SIZE, task
+        assert_state_equals :WRONG_STATUS_SIZE, task
     end
 
     it "should fail if the expected set of actuators do not match the number of entries in the command" do
@@ -54,13 +53,13 @@ describe 'the PID task' do
 
         status  = status_w.new_sample
         status.zero!
-        status.states << Types::Base::Actuators::MotorState.new
+        status.states << Types::Base::JointState.new
         command = command_w.new_sample
         command.zero!
         command_w.write(command)
         status_w.write(status)
         sleep 0.1
-        assert_state_equals :WRONG_INPUT_SIZE, task
+        assert_state_equals :WRONG_INPUT_COMMAND_SIZE, task
     end
 
     describe "application of the PID controller" do
@@ -71,38 +70,39 @@ describe 'the PID task' do
             settings.pid.K = 1
             @status  = status_w.new_sample
             status.zero!
-            status.states << Types::Base::Actuators::MotorState.new
-            status.states[0].zero!
+            status.states << Types::Base::JointState.new
             @command = command_w.new_sample
-            command.mode << :DM_UNINITIALIZED
-            command.target << 0
+            command.states << Types::Base::JointState.new
             @command_r = task.out_command.reader
         end
 
-        def do_test_input_field_selection(mode, position, positionExtern, pwm)
+        def do_test_input_field_selection(mode, position, speed, effort, raw)
             task.settings = [settings]
             task.configure
             task.start
-            command.mode[0] = mode
+            command.states[0][mode] = 0
             command_w.write command
-            status.states[0].position = position
-            status.states[0].positionExtern = positionExtern
-            status.states[0].pwm = pwm
+            status.states[0] = Types::Base::JointState.new(
+                :position => position,
+                :speed => speed,
+                :effort => effort,
+                :raw => raw)
             status_w.write status
             output = read_one_sample(command_r)
             assert_equal(0, output.target[0])
         end
 
-        it "should use the PWM field when in PWM mode" do
-            do_test_input_field_selection(:DM_PWM, 1, 1, 0)
+        it "should use the position field when in position mode" do
+            do_test_input_field_selection(:POSITION, 0, 1, 1, 1)
         end
-        it "should use the position field when in internal position mode" do
-            settings.use_external = false
-            do_test_input_field_selection(:DM_POSITION, 0, 1, 1)
+        it "should use the speed field when in speed mode" do
+            do_test_input_field_selection(:SPEED, 1, 0, 1, 1)
         end
-        it "should use the position field when in external position mode" do
-            settings.use_external = true
-            do_test_input_field_selection(:DM_POSITION, 1, 0, 1)
+        it "should use the effort field when in effort" do
+            do_test_input_field_selection(:EFFORT, 1, 1, 0, 1)
+        end
+        it "should use the raw field when in rawmode" do
+            do_test_input_field_selection(:RAW, 1, 1, 1, 0)
         end
     end
 end

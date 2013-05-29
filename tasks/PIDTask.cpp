@@ -3,24 +3,7 @@
 #include "PIDTask.hpp"
 
 using namespace motor_controller;
-using namespace base::actuators;
-
-void DumbVelocityFilter::reset()
-{
-    mLastValue = 0;
-    mLastTime = base::Time();
-}
-
-double DumbVelocityFilter::update(base::Time now, double v)
-{
-    double result = base::unknown<double>();
-    if (!mLastTime.isNull())
-        result = (v - mLastValue) / (now - mLastTime).toSeconds();
-
-    mLastValue = v;
-    mLastTime = now;
-    return result;
-}
+using base::JointState;
 
 PIDTask::PIDTask(std::string const& name)
     : PIDTaskBase(name)
@@ -53,7 +36,6 @@ bool PIDTask::configureHook()
     _out_command.setDataSample(mOutputCommand);
     mPIDState.resize(size);
     _pid_states.setDataSample(mPIDState);
-    mVelocityFilters.resize(size);
     return true;
 }
 
@@ -72,7 +54,6 @@ bool PIDTask::startHook()
     for (size_t i = 0; i < settings.size(); ++i)
     {
         mPIDs[i].reset();
-        mVelocityFilters[i].reset();
         mPIDs[i].setPIDSettings(settings[i].pid);
     }
     return true;
@@ -83,57 +64,42 @@ void PIDTask::updateHook()
 
     if (_in_command.read(mInputCommand) == RTT::NoData)
         return;
-    if (mInputCommand.target.size() != mPIDs.size() || mInputCommand.mode.size() != mPIDs.size())
-        return exception(WRONG_INPUT_SIZE);
+    if (mInputCommand.size() != mPIDs.size())
+        return exception(WRONG_INPUT_COMMAND_SIZE);
 
     // Do something only when we have a new status sample
     if (_status_samples.read(mStatus) != RTT::NewData)
         return;
-    if (mStatus.states.size() != mPIDs.size())
-        return exception(WRONG_INPUT_SIZE);
+    if (mStatus.size() != mPIDs.size())
+        return exception(WRONG_STATUS_SIZE);
 
     for (size_t i = 0; i < mStatus.states.size(); ++i)
     {
-        DRIVE_MODE input_domain = mInputCommand.mode[i];
-        double     input_target = mInputCommand.target[i];
-        MotorState const& state(mStatus.states[i]);
+        JOINT_STATE_MODE input_domain = mInputCommand.states[i].getMode();
+        float input_target = mInputCommand.states[i].getField(input_domain);
+        float input_state  = mStatus.states[i].getField(input_domain);
+
         ActuatorSettings const& settings(_settings.get()[i]);
-        DRIVE_MODE output_domain = settings.output_domain;
+        JOINT_STATE_MODE output_domain = settings.output_mode;
 
-        double pid_input;
-        if (DM_UNINITIALIZED == input_domain)
-            return exception(UNINITIALIZED_INPUT_MODE);
-        else if (DM_PWM == input_domain) // Treat this as RAW
-            pid_input = state.pwm;
-        else
-        {
-            if (settings.use_external)
-                pid_input = mStatus.states[i].positionExtern;
-            else
-                pid_input = mStatus.states[i].position;
+        float pid_output = computePIDOutput(i,
+                output_domain,
+                input_state,
+                input_target,
+                mStatus.time);
 
-            if (input_domain == DM_SPEED)
-                pid_input = computeSpeedCommand(i, mStatus.time, pid_input);
-        }
-
-        // We use unset as a way to tell that we can't send commands yet
-        if (base::isUnknown<double>(pid_input))
-            return;
-
-        mOutputCommand.mode[i] = output_domain;
-        mOutputCommand.target[i] = computePIDOutput(i, output_domain, pid_input, input_target, mStatus.time);
+        mOutputCommand.states[i].setField(output_domain, pid_output);
         mPIDState[i] = mPIDs[i].getState();
     }
     _out_command.write(mOutputCommand);
     _pid_states.write(mPIDState);
 }
 
-double PIDTask::computeSpeedCommand(int idx, base::Time time, double position)
-{
-    return mVelocityFilters[idx].update(time, position);
-}
-
-double PIDTask::computePIDOutput(int idx, DRIVE_MODE output_domain, double state, double target, base::Time now)
+float PIDTask::computePIDOutput(int idx,
+        JOINT_STATE_MODE output_domain,
+        float state,
+        float target,
+        base::Time now)
 {
     return mPIDs[idx].update(state, target, now.toSeconds());
 }
