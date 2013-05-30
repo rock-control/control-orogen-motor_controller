@@ -43,7 +43,7 @@ namespace motor_controller {
          * @param now the current time
          */
         virtual float computePIDOutput(int idx,
-                base::JOINT_STATE_MODE output_domain,
+                base::JointState::MODE output_domain,
                 float state, float target, base::Time now);
 
     public:

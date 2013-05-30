@@ -75,12 +75,12 @@ void PIDTask::updateHook()
 
     for (size_t i = 0; i < mStatus.states.size(); ++i)
     {
-        JOINT_STATE_MODE input_domain = mInputCommand.states[i].getMode();
+        JointState::MODE input_domain = mInputCommand.states[i].getMode();
         float input_target = mInputCommand.states[i].getField(input_domain);
         float input_state  = mStatus.states[i].getField(input_domain);
 
         ActuatorSettings const& settings(_settings.get()[i]);
-        JOINT_STATE_MODE output_domain = settings.output_mode;
+        JointState::MODE output_domain = settings.output_mode;
 
         float pid_output = computePIDOutput(i,
                 output_domain,
@@ -96,7 +96,7 @@ void PIDTask::updateHook()
 }
 
 float PIDTask::computePIDOutput(int idx,
-        JOINT_STATE_MODE output_domain,
+        JointState::MODE output_domain,
         float state,
         float target,
         base::Time now)
