@@ -30,7 +30,7 @@ bool PIDTask::configureHook()
 
     size_t size =_settings.get().size();
     mPIDs.resize(size);
-    mStatus.states.resize(size);
+    mStatus.resize(size);
     mInputCommand.resize(size);
     mOutputCommand.resize(size);
     _out_command.setDataSample(mOutputCommand);
@@ -73,11 +73,11 @@ void PIDTask::updateHook()
     if (mStatus.size() != mPIDs.size())
         return exception(WRONG_STATUS_SIZE);
 
-    for (size_t i = 0; i < mStatus.states.size(); ++i)
+    for (size_t i = 0; i < mStatus.size(); ++i)
     {
-        JointState::MODE input_domain = mInputCommand.states[i].getMode();
-        float input_target = mInputCommand.states[i].getField(input_domain);
-        float input_state  = mStatus.states[i].getField(input_domain);
+        JointState::MODE input_domain = mInputCommand[i].getMode();
+        float input_target = mInputCommand[i].getField(input_domain);
+        float input_state  = mStatus[i].getField(input_domain);
 
         ActuatorSettings const& settings(_settings.get()[i]);
         JointState::MODE output_domain = settings.output_mode;
@@ -88,7 +88,7 @@ void PIDTask::updateHook()
                 input_target,
                 mStatus.time);
 
-        mOutputCommand.states[i].setField(output_domain, pid_output);
+        mOutputCommand[i].setField(output_domain, pid_output);
         mPIDState[i] = mPIDs[i].getState();
     }
     _out_command.write(mOutputCommand);
