@@ -4,6 +4,7 @@
 #define MOTOR_CONTROLLER_PIDTASK_TASK_HPP
 
 #include "motor_controller/PIDTaskBase.hpp"
+#include <base/commands/Joints.hpp>
 
 namespace motor_controller {
     /*! \class PIDTask 
