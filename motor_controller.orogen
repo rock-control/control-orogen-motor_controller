@@ -16,7 +16,8 @@ task_context 'PIDTask' do
     needs_configuration
 
     # The configuration for each of the actuator controllers
-    property 'settings', 'std/vector<motor_controller/ActuatorSettings>'
+    property('settings', 'std/vector<motor_controller/ActuatorSettings>')
+        .dynamic
 
     # The feedback from the actuators
     #

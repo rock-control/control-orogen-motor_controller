@@ -7,6 +7,8 @@ describe OroGen.motor_controller.PIDTask do
 
     attr_reader :task
     before do
+        self.expect_execution_default_timeout = 60
+
         @task = syskit_deploy(
             OroGen.motor_controller.PIDTask
                   .deployed_as('pid_task_test')
@@ -103,6 +105,54 @@ describe OroGen.motor_controller.PIDTask do
         end
         it 'uses the acceleration field when in acceleration mode' do
             do_test_input_field_selection(:ACCELERATION, 1, 1, 1, 1, 0)
+        end
+    end
+
+    describe 'dynamic property changes' do
+        before do
+            settings = Types.motor_controller.ActuatorSettings.new
+            settings.zero!
+            settings.output_mode = :RAW
+            settings.pid.K = 1;
+            settings.pid.B = 1;
+            @task.properties.settings = [settings]
+            syskit_configure_and_start(@task)
+        end
+
+        it 'accepts dynamic changes to the PID parameters' do
+            settings = Types.motor_controller.ActuatorSettings.new
+            settings.zero!
+            settings.output_mode = :RAW
+            settings.pid.K = 0.1
+            settings.pid.B = 1;
+            execute { @task.properties.settings = [settings] }
+
+            command = Types.base.samples.Joints.new(
+                elements: [Types.base.JointState.Raw(0.1)]
+            )
+            status = Types.base.samples.Joints.new(
+                elements: [Types.base.JointState.Raw(0.2)]
+            )
+
+            cmd = expect_execution do
+                syskit_write task.in_command_port, command
+                syskit_write task.status_samples_port, status
+            end.to do
+                have_one_new_sample task.out_command_port
+            end
+
+            assert_in_delta(-0.01, cmd.elements[0].raw, 1e-3)
+        end
+
+        it 'rejects changes that also change the count of channels' do
+            settings = Types.motor_controller.ActuatorSettings.new
+            settings.zero!
+            expect_execution { @task.properties.settings = [settings, settings] }
+                .to do
+                    have_error_matching(
+                        Syskit::PropertyUpdateError.match.with_origin(task)
+                    )
+                end
         end
     end
 end

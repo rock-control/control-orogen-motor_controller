@@ -1,6 +1,7 @@
 /* Generated from orogen/lib/orogen/templates/tasks/Task.cpp */
 
 #include "PIDTask.hpp"
+#include <base-logging/Logging.hpp>
 
 using namespace motor_controller;
 using base::JointState;
@@ -25,10 +26,12 @@ PIDTask::~PIDTask()
 
 bool PIDTask::configureHook()
 {
-    if (! PIDTaskBase::configureHook())
+    if (! PIDTaskBase::configureHook()) {
         return false;
+    }
 
-    size_t size =_settings.get().size();
+    mSettings = _settings.get();
+    size_t size = mSettings.size();
     mPIDs.resize(size);
     mStatus.resize(size);
     mInputCommand.resize(size);
@@ -41,37 +44,48 @@ bool PIDTask::configureHook()
 
 bool PIDTask::startHook()
 {
-    if (! PIDTaskBase::startHook())
-        return false;
-
-    if (_settings.get().size() != mPIDs.size())
-    {
-        RTT::log(RTT::Error) << "changed the size of the settings property without re-running configure()" << RTT::endlog();
+    if (! PIDTaskBase::startHook()) {
         return false;
     }
 
-    std::vector<motor_controller::ActuatorSettings> const& settings = _settings.get();
-    for (size_t i = 0; i < settings.size(); ++i)
-    {
+    for (size_t i = 0; i < mSettings.size(); ++i) {
         mPIDs[i].reset();
-        mPIDs[i].setPIDSettings(settings[i].pid);
     }
     return true;
 }
+
+bool PIDTask::setSettings(std::vector< ::motor_controller::ActuatorSettings > const & value)
+{
+    if (value.size() != mSettings.size()) {
+        LOG_ERROR_S << "cannot change the settings size dynamically" << std::endl;
+        return false;
+    }
+
+    mSettings = value;
+    for (size_t i = 0; i < mSettings.size(); ++i) {
+        mPIDs[i].setPIDSettings(mSettings[i].pid);
+    }
+    return motor_controller::PIDTaskBase::setSettings(value);
+}
+
 void PIDTask::updateHook()
 {
     PIDTaskBase::updateHook();
 
-    if (_in_command.read(mInputCommand) == RTT::NoData)
+    if (_in_command.read(mInputCommand) == RTT::NoData) {
         return;
-    if (mInputCommand.size() != mPIDs.size())
+    }
+    if (mInputCommand.size() != mPIDs.size()) {
         return exception(WRONG_INPUT_COMMAND_SIZE);
+    }
 
     // Do something only when we have a new status sample
-    if (_status_samples.read(mStatus) != RTT::NewData)
+    if (_status_samples.read(mStatus) != RTT::NewData) {
         return;
-    if (mStatus.size() != mPIDs.size())
+    }
+    if (mStatus.size() != mPIDs.size()) {
         return exception(WRONG_STATUS_SIZE);
+    }
 
     for (size_t i = 0; i < mStatus.size(); ++i)
     {
@@ -79,7 +93,7 @@ void PIDTask::updateHook()
         float input_target = mInputCommand[i].getField(input_domain);
         float input_state  = mStatus[i].getField(input_domain);
 
-        ActuatorSettings const& settings(_settings.get()[i]);
+        ActuatorSettings const& settings(mSettings[i]);
         JointState::MODE output_domain = settings.output_mode;
 
         float pid_output = computePIDOutput(i,
