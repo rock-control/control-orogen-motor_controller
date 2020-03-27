@@ -1,32 +1,35 @@
-name "motor_controller"
-version "0.1"
+# frozen_string_literal: true
 
-import_types_from "base"
+name 'motor_controller'
+version '0.1'
+
+import_types_from 'base'
 
 using_library 'motor_controller'
-import_types_from "motor_controllerTypes.hpp"
-import_types_from "motor_controller/PID.hpp"
+import_types_from 'motor_controllerTypes.hpp'
+import_types_from 'motor_controller/PID.hpp'
 
 # A generic task that applies PID controllers over JointState data
-task_context "PIDTask" do
+task_context 'PIDTask' do
     # This is the default from now on, and should not be removed. Rock will
     # transition to a setup where all components use a configuration step.
     needs_configuration
 
     # The configuration for each of the actuator controllers
-    property "settings", "std/vector<motor_controller/ActuatorSettings>"
+    property('settings', 'std/vector<motor_controller/ActuatorSettings>')
+        .dynamic
 
     # The feedback from the actuators
     #
     # It is expected to contain as many actuator information as there are
     # elements in the settings property
-    input_port "status_samples", "/base/samples/Joints"
+    input_port 'status_samples', '/base/samples/Joints'
 
     # The setpoints
     #
     # It is expected to contain as many actuator information as there are
     # elements in the settings property
-    input_port "in_command", "base/commands/Joints"
+    input_port 'in_command', 'base/commands/Joints'
 
     # The output command
     #
@@ -35,7 +38,7 @@ task_context "PIDTask" do
     #
     # The joint names are set from the values in in_command (NOT in
     # status_samples)
-    output_port "out_command", "base/commands/Joints"
+    output_port 'out_command', 'base/commands/Joints'
 
     # The internal state of the PID controllers
     output_port 'pid_states', 'std/vector<motor_controller/PIDState>'
@@ -46,4 +49,3 @@ task_context "PIDTask" do
 
     port_driven :status_samples
 end
-
