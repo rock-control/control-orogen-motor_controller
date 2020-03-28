@@ -168,24 +168,68 @@ describe OroGen.motor_controller.PIDTask do
         end
     end
 
+    it 'does not carry old values if the output mode changes' do
+        settings = Types.motor_controller.ActuatorSettings.new
+        settings.zero!
+        settings.output_mode = :RAW
+        @task.properties.settings = [settings]
+        syskit_configure_and_start(@task)
+
+        command = Types.base.samples.Joints.new(
+            elements: [Types.base.JointState.Raw(0.1)]
+        )
+        status = Types.base.samples.Joints.new(
+            elements: [Types.base.JointState.Raw(0.2)]
+        )
+
+        expect_execution do
+            syskit_write task.in_command_port, command
+            syskit_write task.status_samples_port, status
+        end.to do
+            have_one_new_sample task.out_command_port
+        end
+
+        task.needs_reconfiguration!
+        @task = syskit_deploy(
+            OroGen.motor_controller.PIDTask
+                  .deployed_as('pid_task_test')
+        )
+
+        settings.output_mode = :EFFORT
+        # Garbage collect the old task to be able to configure and start the
+        # new one
+        expect_execution { @task.properties.settings = [settings.dup] }
+            .garbage_collect(true)
+            .to_run
+        syskit_configure_and_start(task)
+
+        cmd = expect_execution do
+            syskit_write task.in_command_port, command
+            syskit_write task.status_samples_port, status
+        end.to do
+            have_one_new_sample task.out_command_port
+        end
+
+        refute cmd.elements[0].effort.nan?
+        assert cmd.elements[0].raw.nan?
+    end
+
     describe 'dynamic property changes' do
+        attr_reader :settings
+
         before do
-            settings = Types.motor_controller.ActuatorSettings.new
+            @settings = Types.motor_controller.ActuatorSettings.new
             settings.zero!
             settings.output_mode = :RAW
-            settings.pid.K = 1;
-            settings.pid.B = 1;
+            settings.pid.K = 1
+            settings.pid.B = 1
             @task.properties.settings = [settings]
             syskit_configure_and_start(@task)
         end
 
         it 'accepts dynamic changes to the PID parameters' do
-            settings = Types.motor_controller.ActuatorSettings.new
-            settings.zero!
-            settings.output_mode = :RAW
             settings.pid.K = 0.1
-            settings.pid.B = 1;
-            execute { @task.properties.settings = [settings] }
+            execute { @task.properties.settings = [settings.dup] }
 
             command = Types.base.samples.Joints.new(
                 elements: [Types.base.JointState.Raw(0.1)]
@@ -213,6 +257,33 @@ describe OroGen.motor_controller.PIDTask do
                         Syskit::PropertyUpdateError.match.with_origin(task)
                     )
                 end
+        end
+
+        it 'does not carry old values if the output mode changes' do
+            command = Types.base.samples.Joints.new(
+                elements: [Types.base.JointState.Raw(0.1)]
+            )
+            status = Types.base.samples.Joints.new(
+                elements: [Types.base.JointState.Raw(0.2)]
+            )
+
+            cmd = expect_execution do
+                syskit_write task.in_command_port, command
+                syskit_write task.status_samples_port, status
+            end.to do
+                have_one_new_sample task.out_command_port
+            end
+
+            settings.output_mode = :EFFORT
+            execute { @task.properties.settings = [settings.dup] }
+            cmd = expect_execution do
+                syskit_write task.status_samples_port, status
+            end.to do
+                have_one_new_sample task.out_command_port
+            end
+
+            refute cmd.elements[0].effort.nan?
+            assert cmd.elements[0].raw.nan?
         end
     end
 end

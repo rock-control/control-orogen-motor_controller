@@ -122,6 +122,7 @@ void PIDTask::updateHook()
                 input_target,
                 mStatus.time);
 
+        mOutputCommand[i] = base::JointState();
         mOutputCommand[i].setField(output_domain, pid_output);
         mPIDState[i] = mPIDs[i].getState();
     }
