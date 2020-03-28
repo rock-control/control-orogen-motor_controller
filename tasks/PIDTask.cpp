@@ -36,9 +36,7 @@ bool PIDTask::configureHook()
     mStatus.resize(size);
     mInputCommand.resize(size);
     mOutputCommand.resize(size);
-    _out_command.setDataSample(mOutputCommand);
     mPIDState.resize(size);
-    _pid_states.setDataSample(mPIDState);
     return true;
 }
 
