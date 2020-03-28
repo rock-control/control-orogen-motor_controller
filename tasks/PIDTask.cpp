@@ -124,6 +124,7 @@ void PIDTask::updateHook()
         mOutputCommand[i].setField(output_domain, pid_output);
         mPIDState[i] = mPIDs[i].getState();
     }
+    mOutputCommand.names = mInputCommand.names;
     _out_command.write(mOutputCommand);
     _pid_states.write(mPIDState);
 }

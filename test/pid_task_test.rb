@@ -104,6 +104,31 @@ describe OroGen.motor_controller.PIDTask do
         it 'uses the acceleration field when in acceleration mode' do
             do_test_input_field_selection(:ACCELERATION, 1, 1, 1, 1, 0)
         end
+
+        it 'propagates the names from the input command' do
+            settings = Types.motor_controller.ActuatorSettings.new
+            settings.zero!
+            settings.output_mode = :EFFORT
+            @task.properties.settings = [settings]
+            syskit_configure_and_start(@task)
+
+            command = Types.base.samples.Joints.new(
+                names: ['somethingsomething'],
+                elements: [Types.base.JointState.Effort(0)]
+            )
+            status = Types.base.samples.Joints.new(
+                elements: [Types.base.JointState.Effort(0)]
+            )
+
+            cmd = expect_execution do
+                syskit_write task.in_command_port, command
+                syskit_write task.status_samples_port, status
+            end.to do
+                have_one_new_sample task.out_command_port
+            end
+
+            assert_equal ['somethingsomething'], cmd.names
+        end
     end
 
     describe 'input validations' do
