@@ -43,9 +43,10 @@ task_context 'PIDTask' do
     # The internal state of the PID controllers
     output_port 'pid_states', 'std/vector<motor_controller/PIDState>'
 
-    exception_states :UNINITIALIZED_INPUT_MODE
+
     exception_states :WRONG_INPUT_COMMAND_SIZE
     exception_states :WRONG_STATUS_SIZE
+    exception_states :INVALID_INPUT_COMMAND
     exception_states :INVALID_STATUS_SAMPLE
 
     port_driven :status_samples

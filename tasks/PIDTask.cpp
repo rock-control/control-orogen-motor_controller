@@ -89,7 +89,20 @@ void PIDTask::updateHook()
 
     for (size_t i = 0; i < mStatus.size(); ++i)
     {
-        JointState::MODE input_domain = mInputCommand[i].getMode();
+        JointState::MODE input_domain = JointState::UNSET;
+        try {
+            input_domain = mInputCommand[i].getMode();
+            if (input_domain == JointState::UNSET) {
+                LOG_ERROR_S << "command.elements[" << i << "] invalid: "
+                            << "no fields are set" << std::endl;
+                return exception(INVALID_INPUT_COMMAND);
+            }
+        }
+        catch (std::runtime_error const& e) {
+            LOG_ERROR_S << "command.elements[" << i << "] invalid: "
+                        << e.what() << std::endl;
+            return exception(INVALID_INPUT_COMMAND);
+        }
         float input_target = mInputCommand[i].getField(input_domain);
         float input_state  = mStatus[i].getField(input_domain);
 

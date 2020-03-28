@@ -108,6 +108,66 @@ describe OroGen.motor_controller.PIDTask do
         end
     end
 
+    describe 'input validations' do
+        before do
+            settings = Types.motor_controller.ActuatorSettings.new
+            settings.zero!
+            settings.output_mode = :EFFORT
+            @task.properties.settings = [settings]
+            syskit_configure_and_start(@task)
+        end
+
+        it 'emits invalid_input_command if the command has no fields set' do
+            command = Types.base.samples.Joints.new(
+                elements: [Types.base.JointState.Effort(Float::NAN)]
+            )
+            status = Types.base.samples.Joints.new(
+                elements: [Types.base.JointState.Position(0)]
+            )
+
+            expect_execution do
+                syskit_write task.in_command_port, command
+                syskit_write task.status_samples_port, status
+            end.to do
+                emit task.invalid_input_command_event
+            end
+        end
+
+        it 'emits invalid_input_command if the command has more than one field set' do
+            state = Types.base.JointState.Effort(0)
+            state.position = 0
+            command = Types.base.samples.Joints.new(
+                elements: [state]
+            )
+            status = Types.base.samples.Joints.new(
+                elements: [Types.base.JointState.Position(0)]
+            )
+
+            expect_execution do
+                syskit_write task.in_command_port, command
+                syskit_write task.status_samples_port, status
+            end.to do
+                emit task.invalid_input_command_event
+            end
+        end
+
+        it 'validates that the expected input field is set in the status sample' do
+            command = Types.base.samples.Joints.new(
+                elements: [Types.base.JointState.Effort(0)]
+            )
+            status = Types.base.samples.Joints.new(
+                elements: [Types.base.JointState.Position(0)]
+            )
+
+            expect_execution do
+                syskit_write task.in_command_port, command
+                syskit_write task.status_samples_port, status
+            end.to do
+                emit task.invalid_status_sample_event
+            end
+        end
+    end
+
     describe 'dynamic property changes' do
         before do
             settings = Types.motor_controller.ActuatorSettings.new
