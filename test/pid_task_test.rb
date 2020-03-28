@@ -7,8 +7,6 @@ describe OroGen.motor_controller.PIDTask do
 
     attr_reader :task
     before do
-        self.expect_execution_default_timeout = 60
-
         @task = syskit_deploy(
             OroGen.motor_controller.PIDTask
                   .deployed_as('pid_task_test')
