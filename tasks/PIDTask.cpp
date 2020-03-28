@@ -93,6 +93,13 @@ void PIDTask::updateHook()
         float input_target = mInputCommand[i].getField(input_domain);
         float input_state  = mStatus[i].getField(input_domain);
 
+        if (base::isUnknown(input_state)) {
+            LOG_ERROR_S
+                << "Status sample does not contain the necessary information"
+                << std::endl;
+            return exception(INVALID_STATUS_SAMPLE);
+        }
+
         ActuatorSettings const& settings(mSettings[i]);
         JointState::MODE output_domain = settings.output_mode;
 
