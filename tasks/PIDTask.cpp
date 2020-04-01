@@ -36,9 +36,7 @@ bool PIDTask::configureHook()
     mStatus.resize(size);
     mInputCommand.resize(size);
     mOutputCommand.resize(size);
-    _out_command.setDataSample(mOutputCommand);
     mPIDState.resize(size);
-    _pid_states.setDataSample(mPIDState);
     return true;
 }
 
@@ -89,9 +87,29 @@ void PIDTask::updateHook()
 
     for (size_t i = 0; i < mStatus.size(); ++i)
     {
-        JointState::MODE input_domain = mInputCommand[i].getMode();
+        JointState::MODE input_domain = JointState::UNSET;
+        try {
+            input_domain = mInputCommand[i].getMode();
+            if (input_domain == JointState::UNSET) {
+                LOG_ERROR_S << "command.elements[" << i << "] invalid: "
+                            << "no fields are set" << std::endl;
+                return exception(INVALID_INPUT_COMMAND);
+            }
+        }
+        catch (std::runtime_error const& e) {
+            LOG_ERROR_S << "command.elements[" << i << "] invalid: "
+                        << e.what() << std::endl;
+            return exception(INVALID_INPUT_COMMAND);
+        }
         float input_target = mInputCommand[i].getField(input_domain);
         float input_state  = mStatus[i].getField(input_domain);
+
+        if (base::isUnknown(input_state)) {
+            LOG_ERROR_S
+                << "Status sample does not contain the necessary information"
+                << std::endl;
+            return exception(INVALID_STATUS_SAMPLE);
+        }
 
         ActuatorSettings const& settings(mSettings[i]);
         JointState::MODE output_domain = settings.output_mode;
@@ -102,9 +120,11 @@ void PIDTask::updateHook()
                 input_target,
                 mStatus.time);
 
+        mOutputCommand[i] = base::JointState();
         mOutputCommand[i].setField(output_domain, pid_output);
         mPIDState[i] = mPIDs[i].getState();
     }
+    mOutputCommand.names = mInputCommand.names;
     _out_command.write(mOutputCommand);
     _pid_states.write(mPIDState);
 }
