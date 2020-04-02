@@ -60,6 +60,8 @@ describe OroGen.motor_controller.PIDTask do
             settings = Types.motor_controller.ActuatorSettings.new
             settings.zero!
             settings.output_mode = mode
+            settings.pid.B = 1
+            settings.pid.K = 0.01
             @task.properties.settings = [settings]
             syskit_configure_and_start(@task)
 
@@ -67,6 +69,7 @@ describe OroGen.motor_controller.PIDTask do
                 elements: [Types.base.JointState.new]
             )
             command.elements[0][mode] = 0
+
             status = Types.base.samples.Joints.new(
                 elements: [
                     Types.base.JointState.new(
@@ -86,23 +89,23 @@ describe OroGen.motor_controller.PIDTask do
                 have_one_new_sample task.out_command_port
             end
 
-            assert_equal 0, cmd.elements[0][mode]
+            assert_in_delta -0.1, cmd.elements[0][mode], 1e-3
         end
 
         it 'uses the position field when in position mode' do
-            do_test_input_field_selection(:POSITION, 0, 1, 1, 1, 1)
+            do_test_input_field_selection(:POSITION, 10, 1, 1, 1, 1)
         end
         it 'uses the speed field when in speed mode' do
-            do_test_input_field_selection(:SPEED, 1, 0, 1, 1, 1)
+            do_test_input_field_selection(:SPEED, 1, 10, 1, 1, 1)
         end
         it 'uses the effort field when in effort' do
-            do_test_input_field_selection(:EFFORT, 1, 1, 0, 1, 1)
+            do_test_input_field_selection(:EFFORT, 1, 1, 10, 1, 1)
         end
         it 'uses the raw field when in rawmode' do
-            do_test_input_field_selection(:RAW, 1, 1, 1, 0, 1)
+            do_test_input_field_selection(:RAW, 1, 1, 1, 10, 1)
         end
         it 'uses the acceleration field when in acceleration mode' do
-            do_test_input_field_selection(:ACCELERATION, 1, 1, 1, 1, 0)
+            do_test_input_field_selection(:ACCELERATION, 1, 1, 1, 1, 10)
         end
 
         it 'propagates the names from the input command' do

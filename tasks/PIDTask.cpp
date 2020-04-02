@@ -48,6 +48,7 @@ bool PIDTask::startHook()
 
     for (size_t i = 0; i < mSettings.size(); ++i) {
         mPIDs[i].reset();
+        mPIDs[i].setPIDSettings(mSettings[i].pid);
     }
     return true;
 }
