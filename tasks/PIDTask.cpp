@@ -37,6 +37,7 @@ bool PIDTask::configureHook()
     mInputCommand.resize(size);
     mOutputCommand.resize(size);
     mPIDState.resize(size);
+    mRampState.resize(size);
     return true;
 }
 
@@ -44,6 +45,10 @@ bool PIDTask::startHook()
 {
     if (! PIDTaskBase::startHook()) {
         return false;
+    }
+
+    for (auto& state : mRampState) {
+        state.first = base::Time();
     }
 
     for (size_t i = 0; i < mSettings.size(); ++i) {
@@ -103,6 +108,7 @@ void PIDTask::updateHook()
             return exception(INVALID_INPUT_COMMAND);
         }
         float input_target = mInputCommand[i].getField(input_domain);
+        float ramped_input_target = applyRamp(i, base::Time::now(), input_target);
         float input_state  = mStatus[i].getField(input_domain);
 
         if (base::isUnknown(input_state)) {
@@ -118,7 +124,7 @@ void PIDTask::updateHook()
         float pid_output = computePIDOutput(i,
                 output_domain,
                 input_state,
-                input_target,
+                ramped_input_target,
                 mStatus.time);
 
         mOutputCommand[i] = base::JointState();
@@ -128,6 +134,37 @@ void PIDTask::updateHook()
     mOutputCommand.names = mInputCommand.names;
     _out_command.write(mOutputCommand);
     _pid_states.write(mPIDState);
+}
+
+static float clamp(float input, float min, float max) {
+    if (input > max) {
+        return max;
+    }
+    else if (input < min) {
+        return min;
+    }
+    else {
+        return input;
+    }
+}
+
+float PIDTask::applyRamp(int idx, base::Time time, float input) {
+    float ramp = mSettings[idx].ramp;
+    float ramped_input = input;
+
+    if (!mRampState[idx].first.isNull()) {
+        float lastInput = mRampState[idx].second;
+        float dt = (time - mRampState[idx].first).toSeconds();
+        float allowed_range = ramp * dt;
+        ramped_input = clamp(
+            input,
+            lastInput - allowed_range,
+            lastInput + allowed_range
+        );
+    }
+
+    mRampState[idx] = std::make_pair(time, ramped_input);
+    return ramped_input;
 }
 
 float PIDTask::computePIDOutput(int idx,
