@@ -126,6 +126,7 @@ void PIDTask::updateHook()
         mPIDState[i] = mPIDs[i].getState();
     }
     mOutputCommand.names = mInputCommand.names;
+    mOutputCommand.time = base::Time::now();
     _out_command.write(mOutputCommand);
     _pid_states.write(mPIDState);
 }
