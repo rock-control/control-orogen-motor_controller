@@ -14,6 +14,9 @@ namespace motor_controller {
 
         /** Max allowed variation in input command in unit/s */
         float ramp = base::infinity<float>();
+
+        /** How the derivative is computed */
+        DerivativeMode derivative_mode = Output;
     };
 }
 
