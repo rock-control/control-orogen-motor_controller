@@ -54,6 +54,7 @@ bool PIDTask::startHook()
     for (size_t i = 0; i < mSettings.size(); ++i) {
         mPIDs[i].reset();
         mPIDs[i].setPIDSettings(mSettings[i].pid);
+        mPIDs[i].setDerivativeMode(mSettings[i].derivative_mode);
     }
     return true;
 }
@@ -68,6 +69,7 @@ bool PIDTask::setSettings(std::vector< ::motor_controller::ActuatorSettings > co
     mSettings = value;
     for (size_t i = 0; i < mSettings.size(); ++i) {
         mPIDs[i].setPIDSettings(mSettings[i].pid);
+        mPIDs[i].setDerivativeMode(mSettings[i].derivative_mode);
     }
     return motor_controller::PIDTaskBase::setSettings(value);
 }
