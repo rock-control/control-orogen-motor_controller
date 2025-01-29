@@ -33,6 +33,10 @@ namespace motor_controller {
         base::commands::Joints mOutputCommand;
         std::vector<motor_controller::PIDState> mPIDState;
 
+        typedef std::pair<base::Time, float> RampState;
+        std::vector<RampState> mRampState;
+        float applyRamp(int idx, base::Time time, float input);
+
         /** Computes an output command
          *
          * The default implementation simply calls the PID controller for the
