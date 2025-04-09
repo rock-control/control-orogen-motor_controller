@@ -270,7 +270,7 @@ describe OroGen.motor_controller.PIDTask do
             expect_execution { @task.properties.settings = [settings, settings] }
                 .to do
                     have_error_matching(
-                        Syskit::PropertyUpdateError.match.with_origin(task)
+                        Syskit::PropertyUpdatesError.match.with_origin(task)
                     )
                 end
         end
